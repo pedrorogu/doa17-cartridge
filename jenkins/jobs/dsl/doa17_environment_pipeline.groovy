@@ -32,7 +32,12 @@ doa17LaunchEnvironment.with{
     env('PROJECT_NAME', projectFolderName)
   }
   parameters{
-    stringParam("KEY",'Description',"Value")
+    stringParam("AWS_REGION",'us-east-1',"Default AWS Region")
+    stringParam("ENVIRONMENT_NAME",'',"Name of your Environment")
+    stringParam("WEB_APP_PROFILE",'',"Web App Instance Profile from DevOps-Workshop-Networking stack")
+    stringParam("WEB_APP_SG",'',"Web App SG from DevOps-Workshop-Networking stack")
+    stringParam("PUBLIC_SUBNET",'',"Public Subnet from DevOps-Workshop-Networking stack")
+    stringParam("CODE_DEPLOY_ARN",'',"IAM Role ARN from DevopsWorkshop-raem-roles stack")
   }
   wrappers {
     preBuildCleanup()
@@ -73,9 +78,35 @@ doa17CreateApplication.with{
     maskPasswords()
   }
   label("docker")
+    scm{
+    git{
+      remote{
+        url(infrastructureRepository)
+        credentials("adop-jenkins-master")
+      }
+      branch("*/master")
+    }
+  }
     steps {
     shell('''
 set +x
+export AWS_DEFAULT_REGION=$AWS_REGION
+echo "[INFO] Default region is set to $AWS_DEFAULT_REGION"
+
+echo "[INFO] Creating DevopsWorkshop-${ENVIRONMENT_NAME} Stack"
+aws cloudformation create-stack --stack-name DevopsWorkshop-${ENVIRONMENT_NAME} --template-body file:///${WORKSPACE}/03-aws-devops-workshop-environment-setup.template --capabilities CAPABILITY_IAM \
+--parameters  ParameterKey=EnvironmentName,ParameterValue=$ENVIRONMENT_NAME \
+              ParameterKey=WebAppInstanceProfile,ParameterValue=$WEB_APP_PROFILE \
+              ParameterKey=WebAppSG,ParameterValue=$WEB_APP_SG \
+              ParameterKey=publicSubnet01,ParameterValue=$PUBLIC_SUBNET
+
+echo "[INFO] Wating for DevopsWorkshop-${ENVIRONMENT_NAME} Stack"
+aws cloudformation wait stack-create-complete --stack-name DevopsWorkshop-${ENVIRONMENT_NAME}
+echo "[INFO] DevopsWorkshop-${ENVIRONMENT_NAME} Stack Created"
+
+echo "[INFO] Creating Code Build Project"
+aws codebuild create-project --cli-input-json file://${WORKSPACE}/create-project.json
+
 
 set -x'''.stripMargin()
     )

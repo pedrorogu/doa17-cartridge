@@ -31,7 +31,7 @@ doa17CodeBuild.with{
     env('PROJECT_NAME', projectFolderName)
   }
   parameters{
-    stringParam("KEY",'Description',"Value")
+    stringParam("AWS_REGION",'',"Default AWS Region")
   }
   wrappers {
     preBuildCleanup()
@@ -65,7 +65,7 @@ doa17CodeDeployDevelopment.with{
     env('PROJECT_NAME', projectFolderName)
   }
   parameters{
-    stringParam("KEY",'Description',"Value")
+    stringParam("AWS_REGION",'',"Default AWS Region")
   }
   wrappers {
     preBuildCleanup()
@@ -75,6 +75,11 @@ doa17CodeDeployDevelopment.with{
     steps {
     shell('''
 set +x
+export AWS_DEFAULT_REGION=$AWS_REGION
+echo "[INFO] Default region is set to $AWS_DEFAULT_REGION"
+
+echo "[INFO] Creating Code Deploy Application ${ENVIRONMENT_NAME}-WebApp"
+aws deploy create-application --application-name ${ENVIRONMENT_NAME}-WebApp
 
 set -x'''.stripMargin()
     )
@@ -99,7 +104,7 @@ doa17CodeDeployProduction.with{
     env('PROJECT_NAME', projectFolderName)
   }
   parameters{
-    stringParam("KEY",'Description',"Value")
+    stringParam("AWS_REGION",'',"Default AWS Region")
   }
   wrappers {
     preBuildCleanup()
@@ -109,7 +114,11 @@ doa17CodeDeployProduction.with{
     steps {
     shell('''
 set +x
+export AWS_DEFAULT_REGION=$AWS_REGION
+echo "[INFO] Default region is set to $AWS_DEFAULT_REGION"
 
+echo "[INFO] Creating Code Deploy Deployment Group ${ENVIRONMENT_NAME}-DevWebApp"
+aws deploy create-deployment-group --application-name ${ENVIRONMENT_NAME}-WebApp  --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name ${ENVIRONMENT_NAME}-DevWebApp --ec2-tag-filters Key=Name,Value=${ENVIRONMENT_NAME}-DevWebApp,Type=KEY_AND_VALUE --service-role-arn ${CODE_DEPLOY_ARN}
 set -x'''.stripMargin()
     )
   }
